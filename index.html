@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicijnen Monitor</title>
+    <style>
+        :root {
+            --bg-base: #030508;
+            --surface-glass: rgba(13, 17, 28, 0.85);
+            --surface-card: rgba(18, 24, 38, 0.75);
+            --border-glass: rgba(0, 242, 254, 0.2);
+            --neon-cyan: #00f2fe;
+            --neon-blue: #4facfe;
+            --neon-green: #10b981;
+            --neon-orange: #f59e0b;
+            --neon-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background: var(--bg-base); color: var(--text-main); min-height: 100vh; padding: 15px; background-image: radial-gradient(circle at 50% 10%, #0c1425 0%, var(--bg-base) 100%); display: flex; flex-direction: column; align-items: center; }
+
+        header { background: var(--surface-glass); border: 1px solid var(--border-glass); border-radius: 14px; padding: 12px 18px; width: 100%; max-width: 500px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; backdrop-filter: blur(10px); }
+        .app-title { font-size: 15px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 1px; }
+        .header-btns { display: flex; gap: 6px; align-items: center; }
+        .icon-btn { background: rgba(255,255,255,0.1); border: 1px solid var(--border-glass); color: white; width: 36px; height: 36px; border-radius: 50%; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .icon-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.95); }
+
+        /* Navigation Tabs */
+        .tab-bar { display: flex; width: 100%; max-width: 500px; gap: 8px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); border-radius: 10px; color: var(--text-muted); font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; }
+        .tab-btn.active { background: var(--neon-cyan); color: #030508; border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0,242,254,0.3); }
+
+        .card { background: var(--surface-card); border: 1px solid var(--border-glass); border-radius: 16px; padding: 18px; width: 100%; max-width: 500px; margin-bottom: 15px; backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
+        .card-title { font-size: 13px; font-weight: 800; color: var(--neon-cyan); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+
+        /* Sectors voor Dagdelen */
+        .sector-header { font-size: 12px; font-weight: 800; color: var(--neon-blue); text-transform: uppercase; margin: 12px 0 6px 0; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px; }
+        .med-item { background: #0f172a; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
+        .med-item.taken { border-color: var(--neon-green); background: rgba(16,185,129,0.08); }
+        .med-info { display: flex; flex-direction: column; }
+        .med-name { font-size: 14px; font-weight: 700; color: var(--text-main); }
+        .med-dose { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        
+        .check-btn { background: #1e293b; border: 1px solid var(--border-glass); color: var(--text-muted); width: 32px; height: 32px; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .med-item.taken .check-btn { background: var(--neon-green); border-color: var(--neon-green); color: white; }
+
+        /* Formulieren */
+        .form-group { display: flex; flex-direction: column; margin-bottom: 12px; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; }
+        input, select { background: #0f172a; border: 1px solid var(--border-glass); border-radius: 8px; padding: 10px; color: white; font-size: 14px; font-weight: 600; outline: none; width: 100%; }
+
+        .btn-submit { width: 100%; padding: 12px; background: var(--neon-cyan); color: #030508; border: none; border-radius: 10px; font-size: 14px; font-weight: 800; cursor: pointer; margin-top: 8px; box-shadow: 0 0 12px rgba(0,242,254,0.25); }
+
+        /* Modals */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); justify-content: center; align-items: center; z-index: 100; }
+        .modal-content { background: #0f172a; border: 1px solid var(--border-glass); padding: 20px; border-radius: 16px; width: 90%; max-width: 420px; text-align: center; }
+        .modal-content h3 { color: var(--neon-cyan); margin-bottom: 14px; font-size: 16px; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 15px; }
+        .modal-buttons button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        .btn-cancel { background: #1e293b; color: var(--text-muted); }
+        .btn-confirm { background: var(--neon-cyan); color: #030508; }
+
+        .sync-status { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+        .date-picker-box { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .delete-btn { background: var(--neon-red); color: white; border: none; padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <div class="app-title">💊 MEDICIJNEN MONITOR</div>
+            <div class="sync-status" id="syncStatus">Cloud: Niet ingesteld</div>
+        </div>
+        <div class="header-btns">
+            <button class="icon-btn" onclick="openModal('settingsModal')" title="Instellingen">☁️</button>
+        </div>
+    </header>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+        <button class="tab-btn active" id="tabDailyBtn" onclick="switchTab('daily')">📋 Vandaag Afvinken</button>
+        <button class="tab-btn" id="tabManageBtn" onclick="switchTab('manage')">⚙️ Medicijnen Beheer</button>
+    </div>
+
+    <!-- TAB 1: DAGELIJKS OVERZICHT & AFVINKEN -->
+    <div class="card" id="tabDaily">
+        <div class="date-picker-box">
+            <label style="margin:0;">Datum:</label>
+            <input type="date" id="selectedDate" onchange="renderDailyList()">
+        </div>
+
+        <!-- Sectors -->
+        <div class="sector-header">🌅 Morgen (06:00 - 12:00)</div>
+        <div id="sectorMorgen"></div>
+
+        <div class="sector-header">☀️ Middag (12:00 - 18:00)</div>
+        <div id="sectorMiddag"></div>
+
+        <div class="sector-header">🌆 Avond (18:00 - 23:00)</div>
+        <div id="sectorAvond"></div>
+
+        <div class="sector-header">🌙 Nacht (23:00 - 06:00)</div>
+        <div id="sectorNacht"></div>
+    </div>
+
+    <!-- TAB 2: MEDICIJNEN BEHEER -->
+    <div class="card" id="tabManage" style="display: none;">
+        <div class="card-title">Nieuw Medicijn Toevoegen</div>
+        <div class="form-group">
+            <label>Naam Medicijn:</label>
+            <input type="text" id="newMedName" placeholder="bijv. Paracetamol, Tacrolimus...">
+        </div>
+        <div class="form-group">
+            <label>Dosering / Omschrijving:</label>
+            <input type="text" id="newMedDose" placeholder="bijv. 1 tablet (500mg), 2 caps...">
+        </div>
+        <div class="form-group">
+            <label>Tijdsblok / Sector:</label>
+            <select id="newMedSector">
+                <option value="Morgen">🌅 Morgen</option>
+                <option value="Middag">☀️ Middag</option>
+                <option value="Avond">🌆 Avond</option>
+                <option value="Nacht">🌙 Nacht</option>
+            </select>
+        </div>
+        <button class="btn-submit" onclick="addMedicine()">TOEVOEGEN AAN LIJST</button>
+
+        <div class="card-title" style="margin-top:20px;">Ingestelde Medicijnen</div>
+        <div id="managedMedsList"></div>
+    </div>
+
+    <!-- Instellingen Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h3>JSONBin Cloud Sync</h3>
+            <label style="text-align:left; display:block; margin-top:10px;">API Key:</label>
+            <input type="text" id="apiKeyInput" placeholder="API Key ($2a$10$...)">
+            <label style="text-align:left; display:block; margin-top:10px;">Bin ID:</label>
+            <input type="text" id="binIdInput" placeholder="Bin ID">
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal('settingsModal')">Sluiten</button>
+                <button class="btn-confirm" onclick="saveSettings()">Opslaan & Sync</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let medicines = JSON.parse(localStorage.getItem('med_list')) || [
+            { id: 1, name: 'Tacrolimus', dose: '1 capsule 1mg', sector: 'Morgen' },
+            { id: 2, name: 'Calcium', dose: '1 kauwtablet', sector: 'Middag' },
+            { id: 3, name: 'Bloeddrukverlager', dose: '1 tablet', sector: 'Avond' },
+            { id: 4, name: 'Tacrolimus', dose: '1 capsule 1mg', sector: 'Nacht' }
+        ];
+
+        let logs = {}; // Ziet er uit als: { "2026-03-30": { 1: "08:15", 3: "19:30" } }
+        let apiKey = localStorage.getItem('med_jsonbin_apikey') || '';
+        let binId = localStorage.getItem('med_jsonbin_binid') || '';
+
+        window.onload = async () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('selectedDate').value = today;
+
+            if (apiKey && binId) {
+                await syncWithCloud(false);
+            } else {
+                renderDailyList();
+            }
+        };
+
+        function switchTab(tab) {
+            document.getElementById('tabDaily').style.display = tab === 'daily' ? 'block' : 'none';
+            document.getElementById('tabManage').style.display = tab === 'manage' ? 'block' : 'none';
+            document.getElementById('tabDailyBtn').className = tab === 'daily' ? 'tab-btn active' : 'tab-btn';
+            document.getElementById('tabManageBtn').className = tab === 'manage' ? 'tab-btn active' : 'tab-btn';
+
+            if (tab === 'manage') renderManagedList();
+            if (tab === 'daily') renderDailyList();
+        }
+
+        function renderDailyList() {
+            const selectedDate = document.getElementById('selectedDate').value;
+            const dayLog = logs[selectedDate] || {};
+
+            ['Morgen', 'Middag', 'Avond', 'Nacht'].forEach(sector => {
+                const container = document.getElementById('sector' + sector);
+                container.innerHTML = '';
+
+                const sectorMeds = medicines.filter(m => m.sector === sector);
+
+                if (sectorMeds.length === 0) {
+                    container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); padding:4px;">Geen medicijnen.</div>';
+                    return;
+                }
+
+                sectorMeds.forEach(m => {
+                    const isTaken = dayLog[m.id] ? true : false;
+                    const takenTime = isTaken ? dayLog[m.id] : '';
+
+                    container.innerHTML += `
+                        <div class="med-item ${isTaken ? 'taken' : ''}">
+                            <div class="med-info">
+                                <span class="med-name">${m.name}</span>
+                                <span class="med-dose">${m.dose} ${isTaken ? '• Ingenomen om ' + takenTime : ''}</span>
+                            </div>
+                            <button class="check-btn" onclick="toggleMedStatus(${m.id})">
+                                ${isTaken ? '✓' : ''}
+                            </button>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        async function toggleMedStatus(medId) {
+            const selectedDate = document.getElementById('selectedDate').value;
+            if (!logs[selectedDate]) logs[selectedDate] = {};
+
+            if (logs[selectedDate][medId]) {
+                delete logs[selectedDate][medId]; // Ontekenen
+            } else {
+                const now = new Date();
+                const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                logs[selectedDate][medId] = timeStr; // Afvinken met tijdstip
+            }
+
+            renderDailyList();
+            await pushToCloud();
+        }
+
+        function renderManagedList() {
+            const container = document.getElementById('managedMedsList');
+            container.innerHTML = '';
+
+            if (medicines.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-muted); font-size:12px;">Geen medicijnen ingesteld.</p>';
+                return;
+            }
+
+            medicines.forEach((m, idx) => {
+                container.innerHTML += `
+                    <div class="med-item">
+                        <div class="med-info">
+                            <span class="med-name">${m.name}</span>
+                            <span class="med-dose">${m.sector} • ${m.dose}</span>
+                        </div>
+                        <button class="delete-btn" onclick="deleteMedicine(${idx})">Verwijder</button>
+                    </div>
+                `;
+            });
+        }
+
+        async function addMedicine() {
+            const name = document.getElementById('newMedName').value.trim();
+            const dose = document.getElementById('newMedDose').value.trim();
+            const sector = document.getElementById('newMedSector').value;
+
+            if (!name) {
+                alert('Vul een naam in.');
+                return;
+            }
+
+            const newMed = { id: Date.now(), name, dose: dose || '1 dosering', sector };
+            medicines.push(newMed);
+            localStorage.setItem('med_list', JSON.stringify(medicines));
+
+            document.getElementById('newMedName').value = '';
+            document.getElementById('newMedDose').value = '';
+
+            renderManagedList();
+            await pushToCloud();
+            alert('Medicijn toegevoegd!');
+        }
+
+        async function deleteMedicine(idx) {
+            if (confirm('Weet je zeker dat je dit medicijn wilt verwijderen uit de lijst?')) {
+                medicines.splice(idx, 1);
+                localStorage.setItem('med_list', JSON.stringify(medicines));
+                renderManagedList();
+                await pushToCloud();
+            }
+        }
+
+        function openModal(id) {
+            if (id === 'settingsModal') {
+                document.getElementById('apiKeyInput').value = apiKey;
+                document.getElementById('binIdInput').value = binId;
+            }
+            document.getElementById(id).style.display = 'flex';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        async function syncWithCloud(showAlert = false) {
+            if (!apiKey) return;
+            document.getElementById('syncStatus').innerText = 'Cloud: Synchroniseren...';
+
+            try {
+                if (!binId) {
+                    const createRes = await fetch('https://api.jsonbin.io/v3/b', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': apiKey,
+                            'X-Bin-Private': 'true'
+                        },
+                        body: JSON.stringify({ medicines, logs })
+                    });
+                    const createData = await createRes.json();
+                    if (createData.metadata && createData.metadata.id) {
+                        binId = createData.metadata.id;
+                        localStorage.setItem('med_jsonbin_binid', binId);
+                    }
+                }
+
+                const getRes = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+                    headers: { 'X-Master-Key': apiKey }
+                });
+                const getData = await getRes.json();
+
+                if (getData.record) {
+                    if (getData.record.medicines) medicines = getData.record.medicines;
+                    if (getData.record.logs) logs = getData.record.logs;
+                    localStorage.setItem('med_list', JSON.stringify(medicines));
+                    document.getElementById('syncStatus').innerText = 'Cloud: Verbonden';
+                    if (showAlert) alert('Verbonden & gesynchroniseerd!');
+                }
+                renderDailyList();
+            } catch (error) {
+                console.error(error);
+                document.getElementById('syncStatus').innerText = 'Cloud: Fout bij sync';
+            }
+        }
+
+        async function pushToCloud() {
+            if (!apiKey || !binId) return;
+            try {
+                await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': apiKey
+                    },
+                    body: JSON.stringify({ medicines, logs })
+                });
+                document.getElementById('syncStatus').innerText = 'Cloud: Opgeslagen';
+            } catch (error) {
+                console.error(error);
+                document.getElementById('syncStatus').innerText = 'Cloud: Opslaan mislukt';
+            }
+        }
+
+        function saveSettings() {
+            apiKey = document.getElementById('apiKeyInput').value.trim();
+            binId = document.getElementById('binIdInput').value.trim();
+            localStorage.setItem('med_jsonbin_apikey', apiKey);
+            localStorage.setItem('med_jsonbin_binid', binId);
+            closeModal('settingsModal');
+            syncWithCloud(true);
+        }
+    </script>
+</body>
+</html>
