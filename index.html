@@ -28,7 +28,6 @@
         .icon-btn { background: rgba(255,255,255,0.1); border: 1px solid var(--border-glass); color: white; width: 36px; height: 36px; border-radius: 50%; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .icon-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.95); }
 
-        /* Navigation Tabs */
         .tab-bar { display: flex; width: 100%; max-width: 500px; gap: 8px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); border-radius: 10px; color: var(--text-muted); font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; }
         .tab-btn.active { background: var(--neon-cyan); color: #030508; border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0,242,254,0.3); }
@@ -36,27 +35,29 @@
         .card { background: var(--surface-card); border: 1px solid var(--border-glass); border-radius: 16px; padding: 18px; width: 100%; max-width: 500px; margin-bottom: 15px; backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
         .card-title { font-size: 13px; font-weight: 800; color: var(--neon-cyan); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
 
-        /* Sectors voor Dagdelen */
-        .sector-header { font-size: 12px; font-weight: 800; color: var(--neon-blue); text-transform: uppercase; margin: 12px 0 6px 0; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px; }
+        .sector-header { font-size: 12px; font-weight: 800; color: var(--neon-blue); text-transform: uppercase; margin: 14px 0 6px 0; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px; }
         .med-item { background: #0f172a; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
         .med-item.taken { border-color: var(--neon-green); background: rgba(16,185,129,0.08); }
         .med-info { display: flex; flex-direction: column; }
         .med-name { font-size: 14px; font-weight: 700; color: var(--text-main); }
         .med-dose { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .med-extra { font-size: 10px; color: var(--neon-orange); margin-top: 2px; font-weight: 600; }
         
         .check-btn { background: #1e293b; border: 1px solid var(--border-glass); color: var(--text-muted); width: 32px; height: 32px; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .med-item.taken .check-btn { background: var(--neon-green); border-color: var(--neon-green); color: white; }
 
-        /* Formulieren */
         .form-group { display: flex; flex-direction: column; margin-bottom: 12px; }
         label { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; }
         input, select { background: #0f172a; border: 1px solid var(--border-glass); border-radius: 8px; padding: 10px; color: white; font-size: 14px; font-weight: 600; outline: none; width: 100%; }
 
+        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #0f172a; border: 1px solid var(--border-glass); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+        .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-main); cursor: pointer; }
+        .checkbox-label input { width: 16px; height: 16px; accent-color: var(--neon-cyan); }
+
         .btn-submit { width: 100%; padding: 12px; background: var(--neon-cyan); color: #030508; border: none; border-radius: 10px; font-size: 14px; font-weight: 800; cursor: pointer; margin-top: 8px; box-shadow: 0 0 12px rgba(0,242,254,0.25); }
 
-        /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); justify-content: center; align-items: center; z-index: 100; }
-        .modal-content { background: #0f172a; border: 1px solid var(--border-glass); padding: 20px; border-radius: 16px; width: 90%; max-width: 420px; text-align: center; }
+        .modal-content { background: #0f172a; border: 1px solid var(--border-glass); padding: 20px; border-radius: 16px; width: 90%; max-width: 420px; text-align: center; max-height: 85vh; overflow-y: auto; }
         .modal-content h3 { color: var(--neon-cyan); margin-bottom: 14px; font-size: 16px; }
         .modal-buttons { display: flex; gap: 10px; margin-top: 15px; }
         .modal-buttons button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
@@ -80,7 +81,6 @@
         </div>
     </header>
 
-    <!-- Tabs -->
     <div class="tab-bar">
         <button class="tab-btn active" id="tabDailyBtn" onclick="switchTab('daily')">📋 Vandaag Afvinken</button>
         <button class="tab-btn" id="tabManageBtn" onclick="switchTab('manage')">⚙️ Medicijnen Beheer</button>
@@ -93,7 +93,6 @@
             <input type="date" id="selectedDate" onchange="renderDailyList()">
         </div>
 
-        <!-- Sectors -->
         <div class="sector-header">🌅 Morgen (06:00 - 12:00)</div>
         <div id="sectorMorgen"></div>
 
@@ -112,20 +111,28 @@
         <div class="card-title">Nieuw Medicijn Toevoegen</div>
         <div class="form-group">
             <label>Naam Medicijn:</label>
-            <input type="text" id="newMedName" placeholder="bijv. Paracetamol, Tacrolimus...">
+            <input type="text" id="newMedName" placeholder="bijv. Paracetamol...">
         </div>
         <div class="form-group">
-            <label>Dosering / Omschrijving:</label>
-            <input type="text" id="newMedDose" placeholder="bijv. 1 tablet (500mg), 2 caps...">
+            <label>Dosering:</label>
+            <input type="text" id="newMedDose" placeholder="bijv. 3 x 2, 1 tablet...">
+        </div>
+        
+        <label>Moment(en) / Sectoren:</label>
+        <div class="checkbox-group">
+            <label class="checkbox-label"><input type="checkbox" value="Morgen" class="new-sector"> Morgen</label>
+            <label class="checkbox-label"><input type="checkbox" value="Middag" class="new-sector"> Middag</label>
+            <label class="checkbox-label"><input type="checkbox" value="Avond" class="new-sector"> Avond</label>
+            <label class="checkbox-label"><input type="checkbox" value="Nacht" class="new-sector"> Nacht</label>
+        </div>
+
+        <div class="form-group">
+            <label>Specifieke Tijd (optioneel):</label>
+            <input type="text" id="newMedTime" placeholder="bijv. 19:00">
         </div>
         <div class="form-group">
-            <label>Tijdsblok / Sector:</label>
-            <select id="newMedSector">
-                <option value="Morgen">🌅 Morgen</option>
-                <option value="Middag">☀️ Middag</option>
-                <option value="Avond">🌆 Avond</option>
-                <option value="Nacht">🌙 Nacht</option>
-            </select>
+            <label>Situatie / Opmerking (optioneel):</label>
+            <input type="text" id="newMedNote" placeholder="bijv. Avond eten, Volgens voorschrift...">
         </div>
         <button class="btn-submit" onclick="addMedicine()">TOEVOEGEN AAN LIJST</button>
 
@@ -149,14 +156,21 @@
     </div>
 
     <script>
+        // Standaardmedicijnen uit jouw spreadsheet
         let medicines = JSON.parse(localStorage.getItem('med_list')) || [
-            { id: 1, name: 'Tacrolimus', dose: '1 capsule 1mg', sector: 'Morgen' },
-            { id: 2, name: 'Calcium', dose: '1 kauwtablet', sector: 'Middag' },
-            { id: 3, name: 'Bloeddrukverlager', dose: '1 tablet', sector: 'Avond' },
-            { id: 4, name: 'Tacrolimus', dose: '1 capsule 1mg', sector: 'Nacht' }
+            { id: 1, name: 'Paracetamol 500 g', dose: '3 x 2', sectors: ['Morgen', 'Middag', 'Avond'], time: '', note: '' },
+            { id: 2, name: 'Entresto 24 mg/26 mg', dose: '2 x 1', sectors: ['Morgen', 'Avond'], time: '', note: '' },
+            { id: 3, name: 'Pramipexol Aurobin', dose: '1x2', sectors: ['Avond'], time: '19:00', note: '' },
+            { id: 4, name: 'Acenocoumarop CF', dose: 'Volgens schema', sectors: [], time: '', note: 'Avond eten' },
+            { id: 5, name: 'Foster Nexthaler', dose: '200/6', sectors: ['Morgen', 'Avond'], time: '', note: '' },
+            { id: 6, name: 'Alfacalcidol Aurobin', dose: '2 x 1', sectors: ['Morgen'], time: '', note: '' },
+            { id: 7, name: 'Pantoprazol ARX 40 mg', dose: '1', sectors: ['Morgen'], time: '', note: '' },
+            { id: 8, name: 'Fluuoxetine 30 mg', dose: '1', sectors: ['Morgen'], time: '', note: '' },
+            { id: 9, name: 'Bisoprololfumaraat', dose: '1', sectors: ['Morgen'], time: '', note: '' },
+            { id: 10, name: 'Amiodarol HCL Aurobindo 200 mg', dose: '1', sectors: ['Morgen'], time: '', note: '' }
         ];
 
-        let logs = {}; // Ziet er uit als: { "2026-03-30": { 1: "08:15", 3: "19:30" } }
+        let logs = {}; 
         let apiKey = localStorage.getItem('med_jsonbin_apikey') || '';
         let binId = localStorage.getItem('med_jsonbin_binid') || '';
 
@@ -189,7 +203,12 @@
                 const container = document.getElementById('sector' + sector);
                 container.innerHTML = '';
 
-                const sectorMeds = medicines.filter(m => m.sector === sector);
+                // Filter medicijnen die bij deze sector horen (of situatie medicijnen tonen in avond)
+                const sectorMeds = medicines.filter(m => {
+                    if (m.sectors && m.sectors.includes(sector)) return true;
+                    if (sector === 'Avond' && m.note && m.note.toLowerCase().includes('avond')) return true;
+                    return false;
+                });
 
                 if (sectorMeds.length === 0) {
                     container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); padding:4px;">Geen medicijnen.</div>';
@@ -200,11 +219,16 @@
                     const isTaken = dayLog[m.id] ? true : false;
                     const takenTime = isTaken ? dayLog[m.id] : '';
 
+                    let extraInfo = [];
+                    if (m.time) extraInfo.push(`Tijd: ${m.time}`);
+                    if (m.note) extraInfo.push(`Opmerking: ${m.note}`);
+
                     container.innerHTML += `
                         <div class="med-item ${isTaken ? 'taken' : ''}">
                             <div class="med-info">
                                 <span class="med-name">${m.name}</span>
-                                <span class="med-dose">${m.dose} ${isTaken ? '• Ingenomen om ' + takenTime : ''}</span>
+                                <span class="med-dose">Dosering: ${m.dose} ${isTaken ? '• Ingenomen om ' + takenTime : ''}</span>
+                                ${extraInfo.length > 0 ? `<span class="med-extra">${extraInfo.join(' | ')}</span>` : ''}
                             </div>
                             <button class="check-btn" onclick="toggleMedStatus(${m.id})">
                                 ${isTaken ? '✓' : ''}
@@ -220,11 +244,11 @@
             if (!logs[selectedDate]) logs[selectedDate] = {};
 
             if (logs[selectedDate][medId]) {
-                delete logs[selectedDate][medId]; // Ontekenen
+                delete logs[selectedDate][medId];
             } else {
                 const now = new Date();
                 const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-                logs[selectedDate][medId] = timeStr; // Afvinken met tijdstip
+                logs[selectedDate][medId] = timeStr;
             }
 
             renderDailyList();
@@ -241,11 +265,14 @@
             }
 
             medicines.forEach((m, idx) => {
+                let sectorsStr = m.sectors && m.sectors.length > 0 ? m.sectors.join(', ') : 'Geen vaste sector';
+                if (m.note) sectorsStr += ` (${m.note})`;
+
                 container.innerHTML += `
                     <div class="med-item">
                         <div class="med-info">
                             <span class="med-name">${m.name}</span>
-                            <span class="med-dose">${m.sector} • ${m.dose}</span>
+                            <span class="med-dose">${sectorsStr} • Dosering: ${m.dose} ${m.time ? '• Tijd: '+m.time : ''}</span>
                         </div>
                         <button class="delete-btn" onclick="deleteMedicine(${idx})">Verwijder</button>
                     </div>
@@ -256,27 +283,44 @@
         async function addMedicine() {
             const name = document.getElementById('newMedName').value.trim();
             const dose = document.getElementById('newMedDose').value.trim();
-            const sector = document.getElementById('newMedSector').value;
+            const time = document.getElementById('newMedTime').value.trim();
+            const note = document.getElementById('newMedNote').value.trim();
+            
+            const selectedSectors = [];
+            document.querySelectorAll('.new-sector:checked').forEach(cb => {
+                selectedSectors.push(cb.value);
+            });
 
             if (!name) {
-                alert('Vul een naam in.');
+                alert('Vul a.u.b. een medicijnnaam in.');
                 return;
             }
 
-            const newMed = { id: Date.now(), name, dose: dose || '1 dosering', sector };
+            const newMed = { 
+                id: Date.now(), 
+                name, 
+                dose: dose || '1', 
+                sectors: selectedSectors, 
+                time, 
+                note 
+            };
+
             medicines.push(newMed);
             localStorage.setItem('med_list', JSON.stringify(medicines));
 
             document.getElementById('newMedName').value = '';
             document.getElementById('newMedDose').value = '';
+            document.getElementById('newMedTime').value = '';
+            document.getElementById('newMedNote').value = '';
+            document.querySelectorAll('.new-sector').forEach(cb => cb.checked = false);
 
             renderManagedList();
             await pushToCloud();
-            alert('Medicijn toegevoegd!');
+            alert('Medicijn succesvol toegevoegd!');
         }
 
         async function deleteMedicine(idx) {
-            if (confirm('Weet je zeker dat je dit medicijn wilt verwijderen uit de lijst?')) {
+            if (confirm('Weet je zeker dat je dit medicijn wilt verwijderen?')) {
                 medicines.splice(idx, 1);
                 localStorage.setItem('med_list', JSON.stringify(medicines));
                 renderManagedList();
