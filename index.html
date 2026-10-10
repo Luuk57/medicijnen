@@ -239,8 +239,10 @@
                 }
 
                 sectorMeds.forEach(m => {
-                    const isTaken = dayLog[m.id] ? true : false;
-                    const takenTime = isTaken ? dayLog[m.id] : '';
+                    // Unieke sleutel per medicijn én per sector (moment)
+                    const logKey = `${m.id}_${sector}`;
+                    const isTaken = dayLog[logKey] ? true : false;
+                    const takenTime = isTaken ? dayLog[logKey] : '';
 
                     let extraInfo = [];
                     if (m.time) extraInfo.push(`Tijd: ${m.time}`);
@@ -253,7 +255,7 @@
                                 <span class="med-dose">Dosering: ${m.dose} ${isTaken ? '• Ingenomen om ' + takenTime : ''}</span>
                                 ${extraInfo.length > 0 ? `<span class="med-extra">${extraInfo.join(' | ')}</span>` : ''}
                             </div>
-                            <button class="check-btn" onclick="toggleMedStatus(${m.id})">
+                            <button class="check-btn" onclick="toggleMedStatus(${m.id}, '${sector}')">
                                 ${isTaken ? '✓' : ''}
                             </button>
                         </div>
@@ -262,16 +264,18 @@
             });
         }
 
-        function toggleMedStatus(medId) {
+        function toggleMedStatus(medId, sector) {
             const selectedDate = document.getElementById('selectedDate').value;
             if (!logs[selectedDate]) logs[selectedDate] = {};
 
-            if (logs[selectedDate][medId]) {
-                delete logs[selectedDate][medId];
+            const logKey = `${medId}_${sector}`;
+
+            if (logs[selectedDate][logKey]) {
+                delete logs[selectedDate][logKey];
             } else {
                 const now = new Date();
                 const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-                logs[selectedDate][medId] = timeStr;
+                logs[selectedDate][logKey] = timeStr;
             }
             localStorage.setItem('med_logs', JSON.stringify(logs));
             renderDailyList();
@@ -444,8 +448,9 @@
                         `;
 
                         sectorMeds.forEach(med => {
-                            let isTaken = dayLog[med.id] ? true : false;
-                            let takenTime = isTaken ? dayLog[med.id] : '';
+                            const logKey = `${med.id}_${sector}`;
+                            let isTaken = dayLog[logKey] ? true : false;
+                            let takenTime = isTaken ? dayLog[logKey] : '';
                             
                             let statusHtml = isTaken 
                                 ? `<span class="status-taken">✓ Ja (${takenTime})</span>` 
