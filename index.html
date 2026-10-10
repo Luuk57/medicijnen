@@ -35,6 +35,9 @@
         .card { background: var(--surface-card); border: 1px solid var(--border-glass); border-radius: 16px; padding: 18px; width: 100%; max-width: 500px; margin-bottom: 15px; backdrop-filter: blur(10px); box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
         .card-title { font-size: 13px; font-weight: 800; color: var(--neon-cyan); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
 
+        .top-action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
+        .btn-pdf { background: rgba(0,242,254,0.1); border: 1px solid var(--border-glass); color: var(--neon-cyan); padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+
         .sector-header { font-size: 12px; font-weight: 800; color: var(--neon-blue); text-transform: uppercase; margin: 14px 0 6px 0; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px; }
         .med-item { background: #0f172a; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
         .med-item.taken { border-color: var(--neon-green); background: rgba(16,185,129,0.08); }
@@ -65,7 +68,7 @@
         .btn-confirm { background: var(--neon-cyan); color: #030508; }
 
         .sync-status { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
-        .date-picker-box { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .date-picker-box { display: flex; align-items: center; gap: 8px; }
         .delete-btn { background: var(--neon-red); color: white; border: none; padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 700; }
     </style>
 </head>
@@ -88,9 +91,12 @@
 
     <!-- TAB 1: DAGELIJKS OVERZICHT & AFVINKEN -->
     <div class="card" id="tabDaily">
-        <div class="date-picker-box">
-            <label style="margin:0;">Datum:</label>
-            <input type="date" id="selectedDate" onchange="renderDailyList()">
+        <div class="top-action-bar">
+            <div class="date-picker-box">
+                <label style="margin:0;">Datum:</label>
+                <input type="date" id="selectedDate" onchange="renderDailyList()">
+            </div>
+            <button class="btn-pdf" onclick="openModal('pdfModal')">📄 PDF Maken</button>
         </div>
 
         <div class="sector-header">🌅 Morgen (06:00 - 12:00)</div>
@@ -104,6 +110,8 @@
 
         <div class="sector-header">🌙 Nacht (23:00 - 06:00)</div>
         <div id="sectorNacht"></div>
+
+        <button class="btn-submit" onclick="saveAndSyncToday()" style="margin-top: 15px;">💾 WIJZIGINGEN OPSLAAN & SYNC</button>
     </div>
 
     <!-- TAB 2: MEDICIJNEN BEHEER -->
@@ -140,6 +148,21 @@
         <div id="managedMedsList"></div>
     </div>
 
+    <!-- PDF Modal -->
+    <div class="modal" id="pdfModal">
+        <div class="modal-content">
+            <h3>PDF Rapport Genereren</h3>
+            <label>Startdatum / Dag:</label>
+            <input type="date" id="pdfStartDate">
+            <label style="margin-top:10px;">Einddatum (voor periode):</label>
+            <input type="date" id="pdfEndDate">
+            <div class="modal-buttons" style="flex-direction:column; gap:8px; margin-top:15px;">
+                <button class="btn-confirm" onclick="generatePDFReport()">📄 Open & Print PDF</button>
+                <button class="btn-cancel" onclick="closeModal('pdfModal')">Sluiten</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Instellingen Modal -->
     <div class="modal" id="settingsModal">
         <div class="modal-content">
@@ -156,7 +179,6 @@
     </div>
 
     <script>
-        // Standaardmedicijnen uit jouw spreadsheet
         let medicines = JSON.parse(localStorage.getItem('med_list')) || [
             { id: 1, name: 'Paracetamol 500 g', dose: '3 x 2', sectors: ['Morgen', 'Middag', 'Avond'], time: '', note: '' },
             { id: 2, name: 'Entresto 24 mg/26 mg', dose: '2 x 1', sectors: ['Morgen', 'Avond'], time: '', note: '' },
@@ -170,13 +192,15 @@
             { id: 10, name: 'Amiodarol HCL Aurobindo 200 mg', dose: '1', sectors: ['Morgen'], time: '', note: '' }
         ];
 
-        let logs = {}; 
+        let logs = JSON.parse(localStorage.getItem('med_logs')) || {}; 
         let apiKey = localStorage.getItem('med_jsonbin_apikey') || '';
         let binId = localStorage.getItem('med_jsonbin_binid') || '';
 
         window.onload = async () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('selectedDate').value = today;
+            document.getElementById('pdfStartDate').value = today;
+            document.getElementById('pdfEndDate').value = today;
 
             if (apiKey && binId) {
                 await syncWithCloud(false);
@@ -203,7 +227,6 @@
                 const container = document.getElementById('sector' + sector);
                 container.innerHTML = '';
 
-                // Filter medicijnen die bij deze sector horen (of situatie medicijnen tonen in avond)
                 const sectorMeds = medicines.filter(m => {
                     if (m.sectors && m.sectors.includes(sector)) return true;
                     if (sector === 'Avond' && m.note && m.note.toLowerCase().includes('avond')) return true;
@@ -239,7 +262,7 @@
             });
         }
 
-        async function toggleMedStatus(medId) {
+        function toggleMedStatus(medId) {
             const selectedDate = document.getElementById('selectedDate').value;
             if (!logs[selectedDate]) logs[selectedDate] = {};
 
@@ -250,9 +273,14 @@
                 const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
                 logs[selectedDate][medId] = timeStr;
             }
-
+            localStorage.setItem('med_logs', JSON.stringify(logs));
             renderDailyList();
+        }
+
+        async function saveAndSyncToday() {
+            localStorage.setItem('med_logs', JSON.stringify(logs));
             await pushToCloud();
+            alert('Afvinkstatus succesvol opgeslagen en gesynchroniseerd!');
         }
 
         function renderManagedList() {
@@ -328,6 +356,91 @@
             }
         }
 
+        function generatePDFReport() {
+            const start = document.getElementById('pdfStartDate').value;
+            const end = document.getElementById('pdfEndDate').value;
+
+            if (!start || !end) {
+                alert('Selecteer een start- en einddatum.');
+                return;
+            }
+
+            let reportHTML = `
+                <html>
+                <head>
+                    <title>Medicijnen Rapport ${start} t/m ${end}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 25px; color: #2d3748; line-height: 1.4; }
+                        h2 { color: #1a202c; border-bottom: 2px solid #00f2fe; padding-bottom: 8px; margin-bottom: 5px; }
+                        .period { font-size: 13px; color: #718096; margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+                        th, td { border: 1px solid #cbd5e0; padding: 8px; text-align: left; vertical-align: top; }
+                        th { background: #edf2f7; color: #2d3748; font-weight: bold; }
+                        .taken { color: #22543d; font-weight: bold; }
+                        .not-taken { color: #e53e3e; }
+                    </style>
+                </head>
+                <body>
+                    <h2>💊 Medicijnen & Inname Rapport</h2>
+                    <div class="period"><b>Periode:</b> ${start} t/m ${end}</div>
+            `;
+
+            let currDate = new Date(start + 'T00:00:00');
+            let endDateObj = new Date(end + 'T00:00:00');
+
+            while (currDate <= endDateObj) {
+                let y = currDate.getFullYear();
+                let m = String(currDate.getMonth() + 1).padStart(2, '0');
+                let d = String(currDate.getDate()).padStart(2, '0');
+                let dateStr = `${y}-${m}-${d}`;
+
+                let dayLog = logs[dateStr] || {};
+
+                reportHTML += `
+                    <h3 style="margin-top:20px; font-size:14px; color:#2b6cb0;">Datum: ${dateStr}</h3>
+                    <table>
+                        <tr>
+                            <th>Medicijn</th>
+                            <th>Dosering</th>
+                            <th>Sectoren / Notitie</th>
+                            <th>Inname Status</th>
+                        </tr>
+                `;
+
+                medicines.forEach(med => {
+                    let isTaken = dayLog[med.id] ? true : false;
+                    let takenTime = isTaken ? dayLog[med.id] : '-';
+                    let statusText = isTaken ? `<span class="taken">✓ Ingenomen om ${takenTime}</span>` : `<span class="not-taken">Niet afgevinkt</span>`;
+                    let secInfo = med.sectors.join(', ') + (med.note ? ' ('+med.note+')' : '');
+
+                    reportHTML += `
+                        <tr>
+                            <td><b>${med.name}</b></td>
+                            <td>${med.dose}</td>
+                            <td>${secInfo}</td>
+                            <td>${statusText}</td>
+                        </tr>
+                    `;
+                });
+
+                reportHTML += `</table>`;
+                currDate.setDate(currDate.getDate() + 1);
+            }
+
+            reportHTML += `
+                    <script>
+                        window.onload = function() { window.print(); }
+                    <\/script>
+                </body>
+                </html>
+            `;
+
+            const win = window.open('', '_blank');
+            win.document.write(reportHTML);
+            win.document.close();
+            closeModal('pdfModal');
+        }
+
         function openModal(id) {
             if (id === 'settingsModal') {
                 document.getElementById('apiKeyInput').value = apiKey;
@@ -368,9 +481,14 @@
                 const getData = await getRes.json();
 
                 if (getData.record) {
-                    if (getData.record.medicines) medicines = getData.record.medicines;
-                    if (getData.record.logs) logs = getData.record.logs;
-                    localStorage.setItem('med_list', JSON.stringify(medicines));
+                    if (getData.record.medicines) {
+                        medicines = getData.record.medicines;
+                        localStorage.setItem('med_list', JSON.stringify(medicines));
+                    }
+                    if (getData.record.logs) {
+                        logs = getData.record.logs;
+                        localStorage.setItem('med_logs', JSON.stringify(logs));
+                    }
                     document.getElementById('syncStatus').innerText = 'Cloud: Verbonden';
                     if (showAlert) alert('Verbonden & gesynchroniseerd!');
                 }
