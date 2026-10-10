@@ -28,6 +28,12 @@
         .icon-btn { background: rgba(255,255,255,0.1); border: 1px solid var(--border-glass); color: white; width: 36px; height: 36px; border-radius: 50%; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .icon-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.95); }
 
+        /* Actie-banner voor automatische PDF */
+        .auto-pdf-banner { background: rgba(0, 242, 254, 0.1); border: 2px solid var(--neon-cyan); border-radius: 12px; padding: 14px; width: 100%; max-width: 500px; margin-bottom: 15px; display: none; text-align: center; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0,242,254, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(0,242,254, 0); } 100% { box-shadow: 0 0 0 0 rgba(0,242,254, 0); } }
+        .auto-pdf-title { font-size: 12px; font-weight: 800; color: var(--neon-cyan); text-transform: uppercase; margin-bottom: 6px; }
+        .btn-auto-pdf { background: var(--neon-cyan); color: #030508; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; width: 100%; margin-top: 6px; }
+
         .tab-bar { display: flex; width: 100%; max-width: 500px; gap: 8px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); border-radius: 10px; color: var(--text-muted); font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; }
         .tab-btn.active { background: var(--neon-cyan); color: #030508; border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0,242,254,0.3); }
@@ -84,6 +90,13 @@
         </div>
     </header>
 
+    <!-- Automatische PDF Melding & Knop (verschijnt na ingestelde tijd en blijft tot gebruik) -->
+    <div class="auto-pdf-banner" id="autoPdfBanner">
+        <div class="auto-pdf-title">⏰ Tijd bereikt! Dagelijkse PDF nog niet gemaakt</div>
+        <div style="font-size: 12px; color: var(--text-main);">Genereer en download het dagoverzicht om de melding te voltooien.</div>
+        <button class="btn-auto-pdf" onclick="generateAutoPDF()">📄 GENEREER DAG-PDF NU</button>
+    </div>
+
     <div class="tab-bar">
         <button class="tab-btn active" id="tabDailyBtn" onclick="switchTab('daily')">📋 Vandaag Afvinken</button>
         <button class="tab-btn" id="tabManageBtn" onclick="switchTab('manage')">⚙️ Medicijnen Beheer</button>
@@ -94,7 +107,7 @@
         <div class="top-action-bar">
             <div class="date-picker-box">
                 <label style="margin:0;">Datum:</label>
-                <input type="date" id="selectedDate" onchange="renderDailyList()">
+                <input type="date" id="selectedDate" onchange="renderDailyList(); checkAutoPDFTrigger();">
             </div>
             <button class="btn-pdf" onclick="openModal('pdfModal')">📄 PDF Maken</button>
         </div>
@@ -166,11 +179,16 @@
     <!-- Instellingen Modal -->
     <div class="modal" id="settingsModal">
         <div class="modal-content">
-            <h3>JSONBin Cloud Sync</h3>
-            <label style="text-align:left; display:block; margin-top:10px;">API Key:</label>
+            <h3>Instellingen & Cloud</h3>
+            <label style="text-align:left; display:block; margin-top:10px;">Automatische PDF Tijd:</label>
+            <input type="time" id="configPdfTime" value="17:00">
+
+            <label style="text-align:left; display:block; margin-top:14px;">JSONBin API Key:</label>
             <input type="text" id="apiKeyInput" placeholder="API Key ($2a$10$...)">
-            <label style="text-align:left; display:block; margin-top:10px;">Bin ID:</label>
+            
+            <label style="text-align:left; display:block; margin-top:10px;">JSONBin Bin ID:</label>
             <input type="text" id="binIdInput" placeholder="Bin ID">
+            
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="closeModal('settingsModal')">Sluiten</button>
                 <button class="btn-confirm" onclick="saveSettings()">Opslaan & Sync</button>
@@ -193,6 +211,8 @@
         ];
 
         let logs = JSON.parse(localStorage.getItem('med_logs')) || {}; 
+        let pdfTargetTime = localStorage.getItem('med_pdf_time') || '17:00';
+        let pdfGeneratedDays = JSON.parse(localStorage.getItem('med_pdf_generated')) || {}; // { "2026-03-30": true }
         let apiKey = localStorage.getItem('med_jsonbin_apikey') || '';
         let binId = localStorage.getItem('med_jsonbin_binid') || '';
 
@@ -207,7 +227,49 @@
             } else {
                 renderDailyList();
             }
+
+            checkAutoPDFTrigger();
+            // Controleer elke minuut of de ingestelde tijd bereikt is
+            setInterval(checkAutoPDFTrigger, 60000);
         };
+
+        function checkAutoPDFTrigger() {
+            const selectedDate = document.getElementById('selectedDate').value;
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            // Alleen controleren als de geselecteerde datum vandaag is
+            if (selectedDate !== todayStr) {
+                document.getElementById('autoPdfBanner').style.display = 'none';
+                return;
+            }
+
+            // Al tonen als deze dag nog niet gegenereerd is
+            if (pdfGeneratedDays[todayStr]) {
+                document.getElementById('autoPdfBanner').style.display = 'none';
+                return;
+            }
+
+            const now = new Date();
+            const currentTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+            if (currentTime >= pdfTargetTime) {
+                document.getElementById('autoPdfBanner').style.display = 'block';
+            } else {
+                document.getElementById('autoPdfBanner').style.display = 'none';
+            }
+        }
+
+        function generateAutoPDF() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('pdfStartDate').value = todayStr;
+            document.getElementById('pdfEndDate').value = todayStr;
+            generatePDFReport();
+
+            // Markeer deze dag als gegenereerd zodat de knop verdwijnt
+            pdfGeneratedDays[todayStr] = true;
+            localStorage.setItem('med_pdf_generated', JSON.stringify(pdfGeneratedDays));
+            document.getElementById('autoPdfBanner').style.display = 'none';
+        }
 
         function switchTab(tab) {
             document.getElementById('tabDaily').style.display = tab === 'daily' ? 'block' : 'none';
@@ -216,7 +278,10 @@
             document.getElementById('tabManageBtn').className = tab === 'manage' ? 'tab-btn active' : 'tab-btn';
 
             if (tab === 'manage') renderManagedList();
-            if (tab === 'daily') renderDailyList();
+            if (tab === 'daily') {
+                renderDailyList();
+                checkAutoPDFTrigger();
+            }
         }
 
         function renderDailyList() {
@@ -239,7 +304,6 @@
                 }
 
                 sectorMeds.forEach(m => {
-                    // Unieke sleutel per medicijn én per sector (moment)
                     const logKey = `${m.id}_${sector}`;
                     const isTaken = dayLog[logKey] ? true : false;
                     const takenTime = isTaken ? dayLog[logKey] : '';
@@ -497,6 +561,7 @@
 
         function openModal(id) {
             if (id === 'settingsModal') {
+                document.getElementById('configPdfTime').value = pdfTargetTime;
                 document.getElementById('apiKeyInput').value = apiKey;
                 document.getElementById('binIdInput').value = binId;
             }
@@ -520,7 +585,7 @@
                             'X-Master-Key': apiKey,
                             'X-Bin-Private': 'true'
                         },
-                        body: JSON.stringify({ medicines, logs })
+                        body: JSON.stringify({ medicines, logs, pdfTargetTime, pdfGeneratedDays })
                     });
                     const createData = await createRes.json();
                     if (createData.metadata && createData.metadata.id) {
@@ -543,10 +608,19 @@
                         logs = getData.record.logs;
                         localStorage.setItem('med_logs', JSON.stringify(logs));
                     }
+                    if (getData.record.pdfTargetTime) {
+                        pdfTargetTime = getData.record.pdfTargetTime;
+                        localStorage.setItem('med_pdf_time', pdfTargetTime);
+                    }
+                    if (getData.record.pdfGeneratedDays) {
+                        pdfGeneratedDays = getData.record.pdfGeneratedDays;
+                        localStorage.setItem('med_pdf_generated', JSON.stringify(pdfGeneratedDays));
+                    }
                     document.getElementById('syncStatus').innerText = 'Cloud: Verbonden';
                     if (showAlert) alert('Verbonden & gesynchroniseerd!');
                 }
                 renderDailyList();
+                checkAutoPDFTrigger();
             } catch (error) {
                 console.error(error);
                 document.getElementById('syncStatus').innerText = 'Cloud: Fout bij sync';
@@ -562,7 +636,7 @@
                         'Content-Type': 'application/json',
                         'X-Master-Key': apiKey
                     },
-                    body: JSON.stringify({ medicines, logs })
+                    body: JSON.stringify({ medicines, logs, pdfTargetTime, pdfGeneratedDays })
                 });
                 document.getElementById('syncStatus').innerText = 'Cloud: Opgeslagen';
             } catch (error) {
@@ -572,12 +646,17 @@
         }
 
         function saveSettings() {
+            pdfTargetTime = document.getElementById('configPdfTime').value || '17:00';
+            localStorage.setItem('med_pdf_time', pdfTargetTime);
+
             apiKey = document.getElementById('apiKeyInput').value.trim();
             binId = document.getElementById('binIdInput').value.trim();
             localStorage.setItem('med_jsonbin_apikey', apiKey);
             localStorage.setItem('med_jsonbin_binid', binId);
+            
             closeModal('settingsModal');
             syncWithCloud(true);
+            checkAutoPDFTrigger();
         }
     </script>
 </body>
