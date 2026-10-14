@@ -38,6 +38,7 @@
 
         .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; margin-bottom: 10px; width: 100%; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
         .section-title { font-size: 11px; font-weight: bold; color: var(--win-blue); text-transform: uppercase; margin-bottom: 6px; border-bottom: 2px solid var(--win-blue); padding-bottom: 2px; }
+        .moment-subtitle { font-size: 11px; font-weight: bold; color: #333; margin: 8px 0 4px 0; background: #eef6fc; padding: 4px 6px; border-radius: 3px; border-left: 3px solid var(--win-blue); }
 
         .form-group { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
         .form-group label { font-size: 10px; font-weight: 600; color: #555; }
@@ -107,10 +108,10 @@
         </div>
 
         <div class="card">
-            <div class="section-title">🕒 Vandaag In te Nemen Medicatie</div>
+            <div class="section-title">🕒 Vandaag In te Nemen per Moment</div>
             <div class="form-group">
                 <label>Klik op medicijnen om te selecteren en af te vinken</label>
-                <div class="item-grid" id="vandaagMedicatieGrid"></div>
+                <div id="vandaagMomentenContainer"></div>
             </div>
             <button type="button" class="action-btn btn-save" onclick="bevestigInnames()">✅ MARKEREN ALS GENOMEN</button>
         </div>
@@ -212,6 +213,8 @@
             innames: [] 
         };
 
+        const MOGELIJKE_MOMENTEN = ["Ochtend", "Middag", "Avond", "Nacht", "Zo nodig"];
+
         window.addEventListener('DOMContentLoaded', () => {
             laadDataVanBin();
         });
@@ -292,32 +295,59 @@
         }
 
         function vulVandaagGrid() {
-            let grid = document.getElementById('vandaagMedicatieGrid');
-            grid.innerHTML = '';
+            let container = document.getElementById('vandaagMomentenContainer');
+            container.innerHTML = '';
             
             if (!centraleData.medicijnen || centraleData.medicijnen.length === 0) {
-                grid.innerHTML = '<div style="grid-column: span 2; color: #888; font-size: 10px;">Geen medicijnen ingesteld. Voeg ze toe in het beheer tabblad.</div>';
+                container.innerHTML = '<div style="color: #888; font-size: 10px;">Geen medicijnen ingesteld. Voeg ze toe in het beheer tabblad.</div>';
                 return;
             }
 
             let vandaagStr = new Date().toISOString().split('T')[0];
             let genomenVandaag = centraleData.innames.filter(i => i.Datum === vandaagStr).map(i => i.Naam);
 
-            centraleData.medicijnen.forEach(med => {
-                let isAlGenomen = genomenVandaag.includes(med.naam);
-                let isSelected = geselecteerdeMedicijnen.includes(med.naam);
-                let momentenStr = Array.isArray(med.moment) ? med.moment.join(', ') : med.moment;
+            // Loop door elk moment om per moment een sectie te tonen
+            MOGELIJKE_MOMENTEN.forEach(moment => {
+                let medsVoorMoment = centraleData.medicijnen.filter(med => {
+                    let momArr = Array.isArray(med.moment) ? med.moment : [med.moment];
+                    return momArr.includes(moment);
+                });
 
-                let btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'item-btn' + (isAlGenomen ? ' taken' : (isSelected ? ' selected' : ''));
-                btn.innerHTML = `<span><b>${med.naam}</b><br><small>${med.dosering} (${momentenStr})</small></span><span>${isAlGenomen ? '✔️' : (isSelected ? '☑️' : '☐')}</span>`;
-                
-                if (!isAlGenomen) {
-                    btn.onclick = () => toggleSelectieMed(med.naam);
+                if (medsVoorMoment.length > 0) {
+                    let subtitle = document.createElement('div');
+                    subtitle.className = 'moment-subtitle';
+                    subtitle.innerText = getMomentIcoon(moment) + ' ' + moment;
+                    container.appendChild(subtitle);
+
+                    let grid = document.createElement('div');
+                    grid.className = 'item-grid';
+
+                    medsVoorMoment.forEach(med => {
+                        let isAlGenomen = genomenVandaag.includes(med.naam);
+                        let isSelected = geselecteerdeMedicijnen.includes(med.naam);
+
+                        let btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'item-btn' + (isAlGenomen ? ' taken' : (isSelected ? ' selected' : ''));
+                        btn.innerHTML = `<span><b>${med.naam}</b><br><small>${med.dosering}</small></span><span>${isAlGenomen ? '✔️' : (isSelected ? '☑️' : '☐')}</span>`;
+                        
+                        if (!isAlGenomen) {
+                            btn.onclick = () => toggleSelectieMed(med.naam);
+                        }
+                        grid.appendChild(btn);
+                    });
+
+                    container.appendChild(grid);
                 }
-                grid.appendChild(btn);
             });
+        }
+
+        function getMomentIcoon(moment) {
+            if (moment === 'Ochtend') return '🌅';
+            if (moment === 'Middag') return '☀️';
+            if (moment === 'Avond') return '🌆';
+            if (moment === 'Nacht') return '🌙';
+            return '🔄';
         }
 
         function vulMedicatieTabel() {
@@ -349,7 +379,6 @@
             let dosering = document.getElementById('nieuwMedDosering').value.trim() || '1 stuk';
             let bewerkIndex = parseInt(document.getElementById('bewerkIndex').value);
 
-            // Verzamel aangevinkte momenten uit checkboxes
             let gekozenMomenten = [];
             document.querySelectorAll('input[name="momentChk"]:checked').forEach(chk => {
                 gekozenMomenten.push(chk.value);
@@ -381,7 +410,6 @@
                 document.getElementById('opslaanMedBtn').innerText = '+ Medicijn Toevoegen';
             }
 
-            // Reset formulier
             document.getElementById('nieuwMedNaam').value = '';
             document.getElementById('nieuwMedDosering').value = '';
             document.querySelectorAll('input[name="momentChk"]').forEach(chk => chk.checked = false);
@@ -406,7 +434,6 @@
                 chk.checked = actieveMomenten.includes(chk.value);
             });
 
-            // Ga direct naar beheer tab
             toonTab('beheer');
         };
 
