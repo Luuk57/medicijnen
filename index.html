@@ -41,7 +41,12 @@
 
         .form-group { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
         .form-group label { font-size: 10px; font-weight: 600; color: #555; }
-        .form-group input, .form-group select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: #fff; }
+        .form-group input { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: #fff; }
+
+        /* MOMENT MULTI-SELECT GRID */
+        .moment-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 2px; }
+        .moment-btn { background: #f8f8f8; border: 1px solid #ccc; color: #333; font-weight: 600; padding: 6px 4px; border-radius: 4px; font-size: 11px; cursor: pointer; text-align: center; }
+        .moment-btn.selected { background: var(--win-blue); color: white; border-color: var(--win-blue); }
 
         /* MEDICATIE KNOPPEN GRID */
         .item-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 2px; }
@@ -83,7 +88,7 @@
         </div>
     </div>
 
-    <!-- TABBALK MET DIRECTE FUNCTIE AANROEP -->
+    <!-- TABBALK -->
     <div class="tab-bar">
         <button type="button" class="tab-btn active" id="btnInvoer" onclick="toonTab('invoer')">📝 Innames Vandaag</button>
         <button type="button" class="tab-btn" id="btnBeheer" onclick="toonTab('beheer')">💊 Medicatie Beheer</button>
@@ -140,14 +145,14 @@
                 <input type="text" id="nieuwMedDosering" placeholder="Bijv. 1 stuk / 500mg">
             </div>
             <div class="form-group" style="margin-top: 4px;">
-                <label>Moment / Tijdstip</label>
-                <select id="nieuwMedMoment" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: #fff;">
-                    <option value="Ochtend">Ochtend</option>
-                    <option value="Middag">Middag</option>
-                    <option value="Avond">Avond</option>
-                    <option value="Nacht">Nacht</option>
-                    <option value="Zo nodig">Zo nodig</option>
-                </select>
+                <label>Kies Momenten (meerdere mogelijk)</label>
+                <div class="moment-grid" id="momentGrid">
+                    <button type="button" class="moment-btn" onclick="toggleMoment(this, 'Ochtend')">Ochtend</button>
+                    <button type="button" class="moment-btn" onclick="toggleMoment(this, 'Middag')">Middag</button>
+                    <button type="button" class="moment-btn" onclick="toggleMoment(this, 'Avond')">Avond</button>
+                    <button type="button" class="moment-btn" onclick="toggleMoment(this, 'Nacht')">Nacht</button>
+                    <button type="button" class="moment-btn" onclick="toggleMoment(this, 'Zo nodig')">Zo nodig</button>
+                </div>
             </div>
             <button type="button" class="action-btn btn-save" onclick="voegMedicijnToe()">+ Medicijn Toevoegen</button>
         </div>
@@ -159,7 +164,7 @@
                     <tr>
                         <th>Naam</th>
                         <th>Dosering</th>
-                        <th>Moment</th>
+                        <th>Momenten</th>
                         <th style="width: 60px;">Actie</th>
                     </tr>
                 </thead>
@@ -196,6 +201,7 @@
         const API_KEY = "$2a$10$AAsaI9LebId4BAj60iBn3.V/Y3ayfLpT5qI5vhouztfHHUpgmuQdG";
 
         let geselecteerdeMedicijnen = [];
+        let gekozenMomenten = []; // Houdt tijdelijk geselecteerde momenten bij voor nieuwe medicijnen
         let centraleData = { 
             medicijnen: [
                 { naam: "Bloeddrukremmer", dosering: "1 stuk", moment: "Ochtend" },
@@ -209,7 +215,6 @@
             laadDataVanBin();
         });
 
-        // Oerdegelijke tab-wissel functie
         function toonTab(tabNaam) {
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -223,6 +228,17 @@
             } else if (tabNaam === 'historie') {
                 document.getElementById('historiePane').classList.add('active');
                 document.getElementById('btnHistorie').classList.add('active');
+            }
+        }
+
+        function toggleMoment(btn, momentNaam) {
+            let index = gekozenMomenten.indexOf(momentNaam);
+            if (index > -1) {
+                gekozenMomenten.splice(index, 1);
+                btn.classList.remove('selected');
+            } else {
+                gekozenMomenten.push(momentNaam);
+                btn.classList.add('selected');
             }
         }
 
@@ -245,6 +261,17 @@
                 centraleData = data.record || centraleData;
                 if (!centraleData.medicijnen) centraleData.medicijnen = [];
                 if (!centraleData.innames) centraleData.innames = [];
+
+                // Migreer oude data waar 'moment' een string was naar array indien nodig
+                centraleData.medicijnen = centraleData.medicijnen.map(m => {
+                    if (typeof m.moment === 'string') {
+                        return { ...m, moment: [m.moment] };
+                    }
+                    if (!m.moment) {
+                        return { ...m, moment: ["Ochtend"] };
+                    }
+                    return m;
+                });
 
                 vulVandaagGrid();
                 vulMedicatieTabel();
@@ -290,11 +317,12 @@
             centraleData.medicijnen.forEach(med => {
                 let isAlGenomen = genomenVandaag.includes(med.naam);
                 let isSelected = geselecteerdeMedicijnen.includes(med.naam);
+                let momentenStr = Array.isArray(med.moment) ? med.moment.join(', ') : med.moment;
 
                 let btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'item-btn' + (isAlGenomen ? ' taken' : (isSelected ? ' selected' : ''));
-                btn.innerHTML = `<span><b>${med.naam}</b><br><small>${med.dosering} (${med.moment})</small></span><span>${isAlGenomen ? '✔️' : (isSelected ? '☑️' : '☐')}</span>`;
+                btn.innerHTML = `<span><b>${med.naam}</b><br><small>${med.dosering} (${momentenStr})</small></span><span>${isAlGenomen ? '✔️' : (isSelected ? '☑️' : '☐')}</span>`;
                 
                 if (!isAlGenomen) {
                     btn.onclick = () => toggleSelectieMed(med.naam);
@@ -312,11 +340,12 @@
             }
 
             centraleData.medicijnen.forEach((med, index) => {
+                let momentenStr = Array.isArray(med.moment) ? med.moment.join(', ') : med.moment;
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><b>${med.naam}</b></td>
                     <td>${med.dosering}</td>
-                    <td>${med.moment}</td>
+                    <td>${momentenStr}</td>
                     <td><button type="button" class="btn-small btn-del" onclick="verwijderMedicijn(${index})">Wis</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -326,13 +355,27 @@
         function voegMedicijnToe() {
             let naam = document.getElementById('nieuwMedNaam').value.trim();
             let dosering = document.getElementById('nieuwMedDosering').value.trim() || '1 stuk';
-            let moment = document.getElementById('nieuwMedMoment').value;
 
-            if (!naam) return;
+            if (!naam) {
+                alert('Vul a.u.b. een medicijnnaam in.');
+                return;
+            }
+            if (gekozenMomenten.length === 0) {
+                alert('Selecteer a.u.b. ten minste één moment.');
+                return;
+            }
 
-            centraleData.medicijnen.push({ naam: naam, dosering: dosering, moment: moment });
+            centraleData.medicijnen.push({ 
+                naam: naam, 
+                dosering: dosering, 
+                moment: [...gekozenMomenten] 
+            });
+
+            // Reset formulier
             document.getElementById('nieuwMedNaam').value = '';
             document.getElementById('nieuwMedDosering').value = '';
+            gekozenMomenten = [];
+            document.querySelectorAll('.moment-btn').forEach(b => b.classList.remove('selected'));
 
             slaGeheleDataNaarBin();
             vulVandaagGrid();
@@ -364,12 +407,13 @@
 
             geselecteerdeMedicijnen.forEach(naam => {
                 let medInfo = centraleData.medicijnen.find(m => m.naam === naam);
+                let momentenStr = medInfo && Array.isArray(medInfo.moment) ? medInfo.moment.join(', ') : '-';
                 let item = {
                     Datum: datumStr,
                     Tijd: tijdStr,
                     Naam: naam,
                     Dosering: medInfo ? medInfo.dosering : '-',
-                    Moment: medInfo ? medInfo.moment : '-'
+                    Moment: momentenStr
                 };
                 centraleData.innames.unshift(item);
             });
