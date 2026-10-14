@@ -203,7 +203,9 @@
         const JSONBIN_ID = "6acfa601ffd5d160536ae6b0"; 
         const API_KEY = "$2a$10$AAsaI9LebId4BAj60iBn3.V/Y3ayfLpT5qI5vhouztfHHUpgmuQdG";
 
-        let geselecteerdeMedicijnen = [];
+        // We bewaren geselecteerde items als "Naam|Moment" (bijv. "Paracetamol|Ochtend")
+        let geselecteerdeItems = [];
+        
         let centraleData = { 
             medicijnen: [
                 { naam: "Bloeddrukremmer", dosering: "1 stuk", moment: ["Ochtend"] },
@@ -235,12 +237,12 @@
             }
         }
 
-        function toggleSelectieMed(naam) {
-            let index = geselecteerdeMedicijnen.indexOf(naam);
+        function toggleSelectieItem(itemSleutel) {
+            let index = geselecteerdeItems.indexOf(itemSleutel);
             if (index > -1) {
-                geselecteerdeMedicijnen.splice(index, 1);
+                geselecteerdeItems.splice(index, 1);
             } else {
-                geselecteerdeMedicijnen.push(naam);
+                geselecteerdeItems.push(itemSleutel);
             }
             vulVandaagGrid();
         }
@@ -304,9 +306,12 @@
             }
 
             let vandaagStr = new Date().toISOString().split('T')[0];
-            let genomenVandaag = centraleData.innames.filter(i => i.Datum === vandaagStr).map(i => i.Naam);
+            
+            // Reeds genomen items vandaag gekoppeld aan Naam + Moment
+            let genomenVandaagSleutels = centraleData.innames
+                .filter(i => i.Datum === vandaagStr)
+                .map(i => `${i.Naam}|${i.Moment}`);
 
-            // Loop door elk moment om per moment een sectie te tonen
             MOGELIJKE_MOMENTEN.forEach(moment => {
                 let medsVoorMoment = centraleData.medicijnen.filter(med => {
                     let momArr = Array.isArray(med.moment) ? med.moment : [med.moment];
@@ -323,8 +328,9 @@
                     grid.className = 'item-grid';
 
                     medsVoorMoment.forEach(med => {
-                        let isAlGenomen = genomenVandaag.includes(med.naam);
-                        let isSelected = geselecteerdeMedicijnen.includes(med.naam);
+                        let itemSleutel = `${med.naam}|${moment}`;
+                        let isAlGenomen = genomenVandaagSleutels.includes(itemSleutel);
+                        let isSelected = geselecteerdeItems.includes(itemSleutel);
 
                         let btn = document.createElement('button');
                         btn.type = 'button';
@@ -332,7 +338,7 @@
                         btn.innerHTML = `<span><b>${med.naam}</b><br><small>${med.dosering}</small></span><span>${isAlGenomen ? '✔️' : (isSelected ? '☑️' : '☐')}</span>`;
                         
                         if (!isAlGenomen) {
-                            btn.onclick = () => toggleSelectieMed(med.naam);
+                            btn.onclick = () => toggleSelectieItem(itemSleutel);
                         }
                         grid.appendChild(btn);
                     });
@@ -448,7 +454,7 @@
         };
 
         function bevestigInnames() {
-            if (geselecteerdeMedicijnen.length === 0) {
+            if (geselecteerdeItems.length === 0) {
                 alert('Selecteer a.u.b. ten minste één medicijn.');
                 return;
             }
@@ -459,15 +465,18 @@
 
             if (!centraleData.innames) centraleData.innames = [];
 
-            geselecteerdeMedicijnen.forEach(naam => {
+            geselecteerdeItems.forEach(sleutel => {
+                let parts = sleutel.split('|');
+                let naam = parts[0];
+                let moment = parts[1];
+
                 let medInfo = centraleData.medicijnen.find(m => m.naam === naam);
-                let momentenStr = medInfo && Array.isArray(medInfo.moment) ? medInfo.moment.join(', ') : '-';
                 let item = {
                     Datum: datumStr,
                     Tijd: tijdStr,
                     Naam: naam,
                     Dosering: medInfo ? medInfo.dosering : '-',
-                    Moment: momentenStr
+                    Moment: moment
                 };
                 centraleData.innames.unshift(item);
             });
@@ -477,7 +486,7 @@
             vulHistorieTabellen();
             updateDashboard();
 
-            geselecteerdeMedicijnen = [];
+            geselecteerdeItems = [];
             alert('Geselecteerde innames opgeslagen!');
         }
 
@@ -493,13 +502,22 @@
 
         function updateDashboard() {
             let vandaagStr = new Date().toISOString().split('T')[0];
-            let totaalMed = centraleData.medicijnen ? centraleData.medicijnen.length : 0;
-            let genomenVandaag = centraleData.innames ? centraleData.innames.filter(i => i.Datum === vandaagStr).length : 0;
+            
+            // Totaal aantal momenten dat vandaag ingenomen moet worden
+            let totaalMomentenVandaag = 0;
+            if (centraleData.medicijnen) {
+                centraleData.medicijnen.forEach(m => {
+                    let momArr = Array.isArray(m.moment) ? m.moment : [m.moment];
+                    totaalMomentenVandaag += momArr.length;
+                });
+            }
 
-            document.getElementById('totaalInnamesTxt').innerText = `${genomenVandaag} / ${totaalMed} genomen`;
+            let genomenVandaagCount = centraleData.innames ? centraleData.innames.filter(i => i.Datum === vandaagStr).length : 0;
+
+            document.getElementById('totaalInnamesTxt').innerText = `${genomenVandaagCount} / ${totaalMomentenVandaag} genomen`;
             let indicator = document.getElementById('statusIndicatorTxt');
 
-            if (totaalMed > 0 && genomenVandaag >= totaalMed) {
+            if (totaalMomentenVandaag > 0 && genomenVandaagCount >= totaalMomentenVandaag) {
                 indicator.innerText = "✅ Alles genomen";
                 indicator.style.background = "var(--green-ok)";
             } else {
