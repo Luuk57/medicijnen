@@ -43,7 +43,7 @@
         .form-group label { font-size: 10px; font-weight: 600; color: #555; }
         .form-group input, .form-group select { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: #fff; }
 
-        /* MEDICATIE KNOPPEN GRID (50% korter in hoogte) */
+        /* MEDICATIE KNOPPEN GRID */
         .item-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 2px; }
         .item-btn { background: #f8f8f8; border: 1px solid #ccc; color: #333; font-weight: 600; padding: 6px 4px; border-radius: 4px; font-size: 11px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; }
         .item-btn.selected { background: var(--win-blue); color: white; border-color: var(--win-blue); }
@@ -192,7 +192,6 @@
     </div>
 
     <script>
-        // Jouw nieuwe Medicatie Bin ID:
         const JSONBIN_ID = "6acfa601ffd5d160536ae6b0"; 
         const API_KEY = "$2a$10$AAsaI9LebId4BAj60iBn3.V/Y3ayfLpT5qI5vhouztfHHUpgmuQdG";
 
@@ -215,7 +214,11 @@
             document.getElementById('bevestigInnameBtn').addEventListener('click', bevestigInnames);
 
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => wisselTab(e.target.dataset.target, e.target.id));
+                btn.addEventListener('click', (e) => {
+                    let target = e.currentTarget.dataset.target;
+                    let btnId = e.currentTarget.id;
+                    wisselTab(target, btnId);
+                });
             });
 
             laadDataVanBin();
@@ -259,4 +262,208 @@
                 body: JSON.stringify(centraleData)
             })
             .then(res => res.json())
-            .catch(err =>
+            .catch(err => alert("Fout bij opslaan in cloud: " + err));
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(e => {});
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function wisselTab(targetId, btnId) {
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(tb => tb.classList.remove('active'));
+            document.getElementById(targetId).classList.add('active');
+            document.getElementById(btnId).classList.add('active');
+        }
+
+        function vulVandaagGrid() {
+            let grid = document.getElementById('vandaagMedicatieGrid');
+            grid.innerHTML = '';
+            
+            if (!centraleData.medicijnen || centraleData.medicijnen.length === 0) {
+                grid.innerHTML = '<div style="grid-column: span 2; color: #888; font-size: 10px;">Geen medicijnen ingesteld. Voeg ze toe in het beheer tabblad.</div>';
+                return;
+            }
+
+            let vandaagStr = new Date().toISOString().split('T')[0];
+            let genomenVandaag = centraleData.innames.filter(i => i.Datum === vandaagStr).map(i => i.Naam);
+
+            centraleData.medicijnen.forEach(med => {
+                let isAlGenomen = genomenVandaag.includes(med.naam);
+                let isSelected = geselecteerdeMedicijnen.includes(med.naam);
+
+                let btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'item-btn' + (isAlGenomen ? ' taken' : (isSelected ? ' selected' : ''));
+                btn.innerHTML = `<span><b>${med.naam}</b><br><small>${med.dosering} (${med.moment})</small></span><span>${isAlGenomen ? '✔️' : (isSelected ? '☑️' : '☐')}</span>`;
+                
+                if (!isAlGenomen) {
+                    btn.onclick = () => toggleSelectieMed(med.naam);
+                }
+                grid.appendChild(btn);
+            });
+        }
+
+        function vulMedicatieTabel() {
+            let tbody = document.getElementById('medicatielijstTabelBody');
+            tbody.innerHTML = '';
+            if (!centraleData.medicijnen || centraleData.medicijnen.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="color: #888;">Geen medicijnen.</td></tr>';
+                return;
+            }
+
+            centraleData.medicijnen.forEach((med, index) => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${med.naam}</b></td>
+                    <td>${med.dosering}</td>
+                    <td>${med.moment}</td>
+                    <td><button type="button" class="btn-small btn-del" onclick="verwijderMedicijn(${index})">Wis</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function voegMedicijnToe() {
+            let naam = document.getElementById('nieuwMedNaam').value.trim();
+            let dosering = document.getElementById('nieuwMedDosering').value.trim() || '1 stuk';
+            let moment = document.getElementById('nieuwMedMoment').value;
+
+            if (!naam) return;
+
+            centraleData.medicijnen.push({ naam: naam, dosering: dosering, moment: moment });
+            document.getElementById('nieuwMedNaam').value = '';
+            document.getElementById('nieuwMedDosering').value = '';
+
+            slaGeheleDataNaarBin();
+            vulVandaagGrid();
+            vulMedicatieTabel();
+            updateDashboard();
+        }
+
+        window.verwijderMedicijn = function(index) {
+            if (confirm('Weet je zeker dat je dit medicijn wilt verwijderen?')) {
+                centraleData.medicijnen.splice(index, 1);
+                slaGeheleDataNaarBin();
+                vulVandaagGrid();
+                vulMedicatieTabel();
+                updateDashboard();
+            }
+        };
+
+        function bevestigInnames() {
+            if (geselecteerdeMedicijnen.length === 0) {
+                alert('Selecteer a.u.b. ten minste één medicijn.');
+                return;
+            }
+
+            let nu = new Date();
+            let datumStr = nu.toISOString().split('T')[0];
+            let tijdStr = nu.toTimeString().slice(0, 5);
+
+            if (!centraleData.innames) centraleData.innames = [];
+
+            geselecteerdeMedicijnen.forEach(naam => {
+                let medInfo = centraleData.medicijnen.find(m => m.naam === naam);
+                let item = {
+                    Datum: datumStr,
+                    Tijd: tijdStr,
+                    Naam: naam,
+                    Dosering: medInfo ? medInfo.dosering : '-',
+                    Moment: medInfo ? medInfo.moment : '-'
+                };
+                centraleData.innames.unshift(item);
+            });
+
+            slaGeheleDataNaarBin();
+            vulVandaagGrid();
+            vulHistorieTabellen();
+            updateDashboard();
+
+            geselecteerdeMedicijnen = [];
+            alert('Geselecteerde innames opgeslagen!');
+        }
+
+        window.verwijderInname = function(indexInArray) {
+            if (confirm('Weet je zeker dat je deze inname wilt verwijderen?')) {
+                centraleData.innames.splice(indexInArray, 1);
+                slaGeheleDataNaarBin();
+                vulVandaagGrid();
+                vulHistorieTabellen();
+                updateDashboard();
+            }
+        };
+
+        function updateDashboard() {
+            let vandaagStr = new Date().toISOString().split('T')[0];
+            let totaalMed = centraleData.medicijnen ? centraleData.medicijnen.length : 0;
+            let genomenVandaag = centraleData.innames ? centraleData.innames.filter(i => i.Datum === vandaagStr).length : 0;
+
+            document.getElementById('totaalInnamesTxt').innerText = `${genomenVandaag} / ${totaalMed} genomen`;
+            let indicator = document.getElementById('statusIndicatorTxt');
+
+            if (totaalMed > 0 && genomenVandaag >= totaalMed) {
+                indicator.innerText = "✅ Alles genomen";
+                indicator.style.background = "var(--green-ok)";
+            } else {
+                indicator.innerText = "⏳ Nog openstaan";
+                indicator.style.background = "var(--win-blue)";
+            }
+        }
+
+        function vulHistorieTabellen() {
+            let vandaagStr = new Date().toISOString().split('T')[0];
+            
+            let vandaagTbody = document.getElementById('vandaagTabelBody');
+            vandaagTbody.innerHTML = '';
+            
+            let vandaagItems = centraleData.innames ? centraleData.innames.map((i, idx) => ({...i, origineleIndex: idx})).filter(i => i.Datum === vandaagStr) : [];
+
+            if (vandaagItems.length === 0) {
+                vandaagTbody.innerHTML = '<tr><td colspan="4" style="color: #888;">Nog geen innames geregistreerd vandaag.</td></tr>';
+            } else {
+                vandaagItems.forEach(i => {
+                    let tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${i.Tijd}</td>
+                        <td><b>${i.Naam}</b></td>
+                        <td>${i.Dosering} (${i.Moment})</td>
+                        <td><button type="button" class="btn-small btn-del" onclick="verwijderInname(${i.origineleIndex})">Wis</button></td>
+                    `;
+                    vandaagTbody.appendChild(tr);
+                });
+            }
+
+            let histTbody = document.getElementById('historieTabelBody');
+            histTbody.innerHTML = '';
+            if (!centraleData.innames || centraleData.innames.length === 0) {
+                histTbody.innerHTML = '<tr><td colspan="5" style="color: #888;">Geen historie.</td></tr>';
+                return;
+            }
+
+            centraleData.innames.forEach((i, index) => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${i.Datum} ${i.Tijd}</td>
+                    <td><b>${i.Naam}</b></td>
+                    <td>${i.Dosering}</td>
+                    <td>${i.Moment}</td>
+                    <td><button type="button" class="btn-small btn-del" onclick="verwijderInname(${index})">Wis</button></td>
+                `;
+                histTbody.appendChild(tr);
+            });
+        }
+
+        function genereerProPDF() {
+            wisselTab('historieTab', 'tabHistorieBtn');
+            setTimeout(() => {
+                window.print();
+            }, 300);
+        }
+    </script>
+</body>
+</html>
