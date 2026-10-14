@@ -268,7 +268,6 @@
                 vulVandaagGrid();
                 vulMedicatieTabel();
                 vulHistorieTabellen();
-                updateDashboard();
             })
             .catch(err => console.error("Fout bij laden van JSONBin:", err));
         }
@@ -499,7 +498,6 @@
         function updateDashboard() {
             let vandaagStr = new Date().toISOString().split('T')[0];
             
-            // Tel het totaal aantal ingeplande momenten voor alle medicijnen samen
             let totaalMomentenVandaag = 0;
             if (centraleData.medicijnen) {
                 centraleData.medicijnen.forEach(m => {
