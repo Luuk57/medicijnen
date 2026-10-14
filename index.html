@@ -85,9 +85,9 @@
 
     <!-- TABBALK -->
     <div class="tab-bar">
-        <button type="button" class="tab-btn active" id="tabInvoerBtn" data-target="invoerTab">📝 Innames Vandaag</button>
-        <button type="button" class="tab-btn" id="tabBeheerBtn" data-target="beheerTab">💊 Medicatie Beheer</button>
-        <button type="button" class="tab-btn" id="tabHistorieBtn" data-target="historieTab">📊 Historie</button>
+        <button type="button" class="tab-btn active" onclick="wisselTab('invoerTab', this)">📝 Innames Vandaag</button>
+        <button type="button" class="tab-btn" onclick="wisselTab('beheerTab', this)">💊 Medicatie Beheer</button>
+        <button type="button" class="tab-btn" onclick="wisselTab('historieTab', this)">📊 Historie</button>
     </div>
 
     <!-- TAB 1: INNAMES VANDAAG -->
@@ -213,16 +213,16 @@
             document.getElementById('voegMedToeBtn').addEventListener('click', voegMedicijnToe);
             document.getElementById('bevestigInnameBtn').addEventListener('click', bevestigInnames);
 
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    let target = e.currentTarget.dataset.target;
-                    let btnId = e.currentTarget.id;
-                    wisselTab(target, btnId);
-                });
-            });
-
             laadDataVanBin();
         });
+
+        function wisselTab(targetId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(tb => tb.classList.remove('active'));
+            
+            document.getElementById(targetId).classList.add('active');
+            if (btnElement) btnElement.classList.add('active');
+        }
 
         function toggleSelectieMed(naam) {
             let index = geselecteerdeMedicijnen.indexOf(naam);
@@ -271,13 +271,6 @@
             } else {
                 if (document.exitFullscreen) document.exitFullscreen();
             }
-        }
-
-        function wisselTab(targetId, btnId) {
-            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(tb => tb.classList.remove('active'));
-            document.getElementById(targetId).classList.add('active');
-            document.getElementById(btnId).classList.add('active');
         }
 
         function vulVandaagGrid() {
@@ -459,7 +452,7 @@
         }
 
         function genereerProPDF() {
-            wisselTab('historieTab', 'tabHistorieBtn');
+            wisselTab('historieTab', document.querySelectorAll('.tab-btn')[2]);
             setTimeout(() => {
                 window.print();
             }, 300);
