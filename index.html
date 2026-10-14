@@ -14,7 +14,6 @@
             --font-ui: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             --green-ok: #107c41;
             --red-alert: #d13438;
-            --orange-warn: #ca5010;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-ui); }
@@ -44,10 +43,10 @@
         .form-group label { font-size: 10px; font-weight: 600; color: #555; }
         .form-group input { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: #fff; }
 
-        /* MOMENT MULTI-SELECT GRID */
-        .moment-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 2px; }
-        .moment-btn { background: #f8f8f8; border: 1px solid #ccc; color: #333; font-weight: 600; padding: 6px 4px; border-radius: 4px; font-size: 11px; cursor: pointer; text-align: center; }
-        .moment-btn.selected { background: var(--win-blue); color: white; border-color: var(--win-blue); }
+        /* CHECKBOX CONTAINER VOOR MOMENTEN */
+        .checkbox-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 4px; background: #fdfdfd; border: 1px solid #ccc; padding: 8px; border-radius: 4px; }
+        .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .checkbox-label input { width: 16px; height: 16px; cursor: pointer; }
 
         /* MEDICATIE KNOPPEN GRID */
         .item-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 2px; }
@@ -148,13 +147,13 @@
                 <input type="text" id="nieuwMedDosering" placeholder="Bijv. 1 stuk / 500mg">
             </div>
             <div class="form-group" style="margin-top: 4px;">
-                <label>Kies Momenten (meerdere mogelijk)</label>
-                <div class="moment-grid" id="momentGrid">
-                    <button type="button" class="moment-btn" onclick="toggleMoment(this, 'Ochtend')">Ochtend</button>
-                    <button type="button" class="moment-btn" onclick="toggleMoment(this, 'Middag')">Middag</button>
-                    <button type="button" class="moment-btn" onclick="toggleMoment(this, 'Avond')">Avond</button>
-                    <button type="button" class="moment-btn" onclick="toggleMoment(this, 'Nacht')">Nacht</button>
-                    <button type="button" class="moment-btn" onclick="toggleMoment(this, 'Zo nodig')">Zo nodig</button>
+                <label>Kies Moment(en) op de dag</label>
+                <div class="checkbox-container">
+                    <label class="checkbox-label"><input type="checkbox" name="momentChk" value="Ochtend"> Ochtend</label>
+                    <label class="checkbox-label"><input type="checkbox" name="momentChk" value="Middag"> Middag</label>
+                    <label class="checkbox-label"><input type="checkbox" name="momentChk" value="Avond"> Avond</label>
+                    <label class="checkbox-label"><input type="checkbox" name="momentChk" value="Nacht"> Nacht</label>
+                    <label class="checkbox-label"><input type="checkbox" name="momentChk" value="Zo nodig"> Zo nodig</label>
                 </div>
             </div>
             <button type="button" class="action-btn btn-save" id="opslaanMedBtn" onclick="slaMedicijnOp()">+ Medicijn Toevoegen</button>
@@ -204,7 +203,6 @@
         const API_KEY = "$2a$10$AAsaI9LebId4BAj60iBn3.V/Y3ayfLpT5qI5vhouztfHHUpgmuQdG";
 
         let geselecteerdeMedicijnen = [];
-        let gekozenMomenten = []; 
         let centraleData = { 
             medicijnen: [
                 { naam: "Bloeddrukremmer", dosering: "1 stuk", moment: ["Ochtend"] },
@@ -231,17 +229,6 @@
             } else if (tabNaam === 'historie') {
                 document.getElementById('historiePane').classList.add('active');
                 document.getElementById('btnHistorie').classList.add('active');
-            }
-        }
-
-        function toggleMoment(btn, momentNaam) {
-            let index = gekozenMomenten.indexOf(momentNaam);
-            if (index > -1) {
-                gekozenMomenten.splice(index, 1);
-                btn.classList.remove('selected');
-            } else {
-                gekozenMomenten.push(momentNaam);
-                btn.classList.add('selected');
             }
         }
 
@@ -362,6 +349,12 @@
             let dosering = document.getElementById('nieuwMedDosering').value.trim() || '1 stuk';
             let bewerkIndex = parseInt(document.getElementById('bewerkIndex').value);
 
+            // Verzamel aangevinkte momenten uit checkboxes
+            let gekozenMomenten = [];
+            document.querySelectorAll('input[name="momentChk"]:checked').forEach(chk => {
+                gekozenMomenten.push(chk.value);
+            });
+
             if (!naam) {
                 alert('Vul a.u.b. een medicijnnaam in.');
                 return;
@@ -372,20 +365,17 @@
             }
 
             if (bewerkIndex === -1) {
-                // Nieuw toevoegen
                 centraleData.medicijnen.push({ 
                     naam: naam, 
                     dosering: dosering, 
-                    moment: [...gekozenMomenten] 
+                    moment: gekozenMomenten 
                 });
             } else {
-                // Bestaande bijwerken
                 centraleData.medicijnen[bewerkIndex] = { 
                     naam: naam, 
                     dosering: dosering, 
-                    moment: [...gekozenMomenten] 
+                    moment: gekozenMomenten 
                 };
-                // Reset bewerk modus
                 document.getElementById('bewerkIndex').value = -1;
                 document.getElementById('formTitle').innerText = '➕ Nieuw Medicijn Toevoegen';
                 document.getElementById('opslaanMedBtn').innerText = '+ Medicijn Toevoegen';
@@ -394,8 +384,7 @@
             // Reset formulier
             document.getElementById('nieuwMedNaam').value = '';
             document.getElementById('nieuwMedDosering').value = '';
-            gekozenMomenten = [];
-            document.querySelectorAll('.moment-btn').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('input[name="momentChk"]').forEach(chk => chk.checked = false);
 
             slaGeheleDataNaarBin();
             vulVandaagGrid();
@@ -412,15 +401,13 @@
             document.getElementById('formTitle').innerText = '✏️ Medicijn Bewerken';
             document.getElementById('opslaanMedBtn').innerText = '💾 WIJZIGINGEN OPSLAAN';
 
-            // Zet momenten goed
-            gekozenMomenten = Array.isArray(med.moment) ? [...med.moment] : [med.moment];
-            document.querySelectorAll('.moment-btn').forEach(b => {
-                if (gekozenMomenten.includes(b.innerText)) {
-                    b.classList.add('selected');
-                } else {
-                    b.classList.remove('selected');
-                }
+            let actieveMomenten = Array.isArray(med.moment) ? med.moment : [med.moment];
+            document.querySelectorAll('input[name="momentChk"]').forEach(chk => {
+                chk.checked = actieveMomenten.includes(chk.value);
             });
+
+            // Ga direct naar beheer tab
+            toonTab('beheer');
         };
 
         window.verwijderMedicijn = function(index) {
