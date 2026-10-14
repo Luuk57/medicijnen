@@ -26,6 +26,7 @@
         .header-btns { display: flex; gap: 6px; }
         .top-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
         .top-btn-pdf { background: #107c41; }
+        .top-btn-share { background: #00bcf2; }
 
         /* TAB BAR */
         .tab-bar { display: flex; background: #e5e5e5; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
@@ -55,10 +56,6 @@
         .item-btn.selected { background: var(--win-blue); color: white; border-color: var(--win-blue); }
         .item-btn.taken { background: #dff6dd; border-color: #107c41; color: #107c41; text-decoration: line-through; }
 
-        /* PROGRESS DASHBOARD */
-        .dashboard-box { background: #eef6fc; border-left: 4px solid var(--win-blue); padding: 8px; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .dashboard-stat { font-size: 15px; font-weight: bold; }
-
         .action-btn { flex: 1; padding: 8px; border: none; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; color: white; text-align: center; }
         .btn-save { background: var(--win-blue); width: 100%; padding: 10px; font-size: 13px; margin-top: 8px; }
         
@@ -84,7 +81,8 @@
     <div class="header">
         <span>💊 Medicatie & Inname Monitor</span>
         <div class="header-btns">
-            <button type="button" class="top-btn top-btn-pdf" onclick="genereerProPDF()">📄 Pro PDF</button>
+            <button type="button" class="top-btn top-btn-share" onclick="deelInnames()">📤 Deel</button>
+            <button type="button" class="top-btn top-btn-pdf" onclick="genereerProPDF()">📄 PDF</button>
             <button type="button" class="top-btn" onclick="toggleFullscreen()">⛶ Scherm</button>
             <button type="button" class="top-btn" onclick="laadDataVanBin()">🔄 Sync</button>
         </div>
@@ -99,14 +97,6 @@
 
     <!-- TAB 1: INNAMES VANDAAG -->
     <div id="invoerPane" class="tab-pane active">
-        <div class="dashboard-box">
-            <div>
-                <div style="font-size: 10px; color: #555; font-weight: bold;">STATUS VANDAAG</div>
-                <div class="dashboard-stat" id="totaalInnamesTxt">0 / 0 genomen</div>
-            </div>
-            <div id="statusIndicatorTxt" style="font-weight: bold; font-size: 11px; padding: 3px 6px; border-radius: 3px; background: #107c41; color: white;">Alles bijgewerkt</div>
-        </div>
-
         <div class="card">
             <div class="section-title">🕒 Vandaag In te Nemen per Moment</div>
             <div class="form-group">
@@ -116,14 +106,15 @@
             <button type="button" class="action-btn btn-save" onclick="bevestigInnames()">✅ MARKEREN ALS GENOMEN</button>
         </div>
 
+        <!-- HIER STAAT NU ALLES ONDERAAN WAT JE HEBT AANGEVINKT -->
         <div class="card">
-            <div class="section-title">📋 Reeds Genomen Vandaag (Laatste bovenaan)</div>
+            <div class="section-title">📋 Reeds Genomen Vandaag Onderaan</div>
             <table class="dialyse-table">
                 <thead>
                     <tr>
                         <th>Tijd</th>
                         <th>Medicijn</th>
-                        <th>Dosering</th>
+                        <th>Dosering / Moment</th>
                         <th style="width: 50px;">Actie</th>
                     </tr>
                 </thead>
@@ -269,7 +260,9 @@
                 vulMedicatieTabel();
                 vulHistorieTabellen();
             })
-            .catch(err => console.error("Fout bij laden van JSONBin:", err));
+            .catch(err => {
+                console.error("Fout bij laden van JSONBin:", err);
+            });
         }
 
         function slaGeheleDataNaarBin() {
@@ -282,7 +275,7 @@
                 body: JSON.stringify(centraleData)
             })
             .then(res => res.json())
-            .catch(err => alert("Fout bij opslaan in cloud: " + err));
+            .catch(err => console.error("Fout bij opslaan in cloud:", err));
         }
 
         function toggleFullscreen() {
@@ -299,7 +292,6 @@
             
             if (!centraleData.medicijnen || centraleData.medicijnen.length === 0) {
                 container.innerHTML = '<div style="color: #888; font-size: 10px;">Geen medicijnen ingesteld. Voeg ze toe in het beheer tabblad.</div>';
-                updateDashboard();
                 return;
             }
 
@@ -343,8 +335,6 @@
                     container.appendChild(grid);
                 }
             });
-
-            updateDashboard();
         }
 
         function getMomentIcoon(moment) {
@@ -483,7 +473,6 @@
             vulHistorieTabellen();
 
             geselecteerdeItems = [];
-            alert('Geselecteerde innames opgeslagen!');
         }
 
         window.verwijderInname = function(indexInArray) {
@@ -494,31 +483,6 @@
                 vulHistorieTabellen();
             }
         };
-
-        function updateDashboard() {
-            let vandaagStr = new Date().toISOString().split('T')[0];
-            
-            let totaalMomentenVandaag = 0;
-            if (centraleData.medicijnen) {
-                centraleData.medicijnen.forEach(m => {
-                    let momArr = Array.isArray(m.moment) ? m.moment : [m.moment];
-                    totaalMomentenVandaag += momArr.length;
-                });
-            }
-
-            let genomenVandaagCount = centraleData.innames ? centraleData.innames.filter(i => i.Datum === vandaagStr).length : 0;
-
-            document.getElementById('totaalInnamesTxt').innerText = `${genomenVandaagCount} / ${totaalMomentenVandaag} genomen`;
-            let indicator = document.getElementById('statusIndicatorTxt');
-
-            if (totaalMomentenVandaag > 0 && genomenVandaagCount >= totaalMomentenVandaag) {
-                indicator.innerText = "✅ Alles genomen";
-                indicator.style.background = "var(--green-ok)";
-            } else {
-                indicator.innerText = "⏳ Nog openstaan";
-                indicator.style.background = "var(--win-blue)";
-            }
-        }
 
         function vulHistorieTabellen() {
             let vandaagStr = new Date().toISOString().split('T')[0];
@@ -561,6 +525,32 @@
                 `;
                 histTbody.appendChild(tr);
             });
+        }
+
+        function deelInnames() {
+            let vandaagStr = new Date().toISOString().split('T')[0];
+            let vandaagItems = centraleData.innames ? centraleData.innames.filter(i => i.Datum === vandaagStr) : [];
+            
+            if (vandaagItems.length === 0) {
+                alert('Geen innames om door te sturen voor vandaag.');
+                return;
+            }
+
+            let tekst = `💊 Medicatie Overzicht Vandaag (${vandaagStr}):\n`;
+            vandaagItems.forEach(i => {
+                tekst += `- ${i.Tijd}: ${i.Naam} (${i.Dosering} - ${i.Moment})\n`;
+            });
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Medicatie Innames Vandaag',
+                    text: tekst
+                }).catch(err => console.log('Delen geannuleerd'));
+            } else {
+                navigator.clipboard.writeText(tekst).then(() => {
+                    alert('Overzicht is gekopieerd naar het klembord!');
+                });
+            }
         }
 
         function genereerProPDF() {
